@@ -20,13 +20,11 @@
 /* the thread structure itself
  */
 struct qthread {
-    /* your code here */
 };
 
 /* Mutex
  */
 struct qthread_mutex {
-    short lock;
 };
 
 /* Condition variable

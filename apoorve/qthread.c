@@ -278,3 +278,24 @@ ssize_t qthread_write(int sockfd, const void *buf, size_t len)
     return 0;
 }
 
+
+
+void test_func(){
+
+printf("in thread");
+sleep(60);
+printf("exiting thread");
+}
+
+
+int main()
+{
+
+int *sp = (int*)malloc(sizeof(int)*1024);
+
+
+setup_stack((int*)(sp + (sizeof(int)*1024)), test_func, NULL, NULL);
+
+
+}
+
