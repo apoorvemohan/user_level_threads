@@ -12,6 +12,8 @@
 #include <fcntl.h>
 #include "qthread.h"
 
+#define THREADSTACKSIZE 4096
+
 /*
  * do_switch is defined in do-switch.s, as the stack frame layout
  * changes with optimization level, making it difficult to do with
@@ -132,6 +134,30 @@ int qthread_attr_setdetachstate(qthread_attr_t *attr, int detachstate)
 }
 
 
+void allocateThreadStack(void* basePtr, void* offsetPtr) {
+
+        basePtr = malloc(THREADSTACKSIZE);
+        offsetPtr = basePtr + THREADSTACKSIZE;
+}
+
+void setupThreadControlBlock(struct qthread* currentThreadControlBlock) {
+
+	currentThreadControlBlock = (struct qthread*)malloc(sizeof(struct qthread)); 
+	enqueue(currentThreadControlBlock);
+	allocateThreadStack(currentThreadControlBlock->basePtr, currentThreadControlBlock->offsetPtr);	
+	currentThreadControlBlock->detached = 0;
+}
+
+void initThreadLib() {
+
+	struct qthread* baseThreadControlBlock;
+
+	setupThreadControlBlock(baseThreadControlBlock);
+	setup_stack(baseThreadControlBlock->basePtr, NULL, NULL, NULL);
+
+}
+
+
 /* a thread can exit by either returning from its main function or
  * calling qthread_exit(), so you should probably use a dummy start
  * function that calls the real start function and then calls
@@ -143,7 +169,15 @@ int qthread_attr_setdetachstate(qthread_attr_t *attr, int detachstate)
 int qthread_create(qthread_t *thread, qthread_attr_t *attr,
                    qthread_func_ptr_t start, void *arg)
 {
-    /* your code here */
+    if(isQueueEmpty)
+	initThreadLib();
+
+    struct qthread* currentThreadControlBlock;
+
+    setupThreadControlBlock(currentThreadControlBlock);
+    enqueue(currentThreadControlBlock);
+    setup_stack(currentThreadControlBlock->basePtr, NULL, start, arg[0], arg[1]);
+
     return 0;
 }
 
@@ -291,11 +325,7 @@ printf("exiting thread");
 int main()
 {
 
-int *sp = (int*)malloc(sizeof(int)*1024);
-
-
-setup_stack((int*)(sp + (sizeof(int)*1024)), test_func, NULL, NULL);
-
+	
 
 }
 

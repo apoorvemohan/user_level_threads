@@ -40,6 +40,7 @@ void dequeueThread() {
 
 			temp = rear;
 			activeThreadList = front = rear = NULL;
+
 		} else {
 
 			temp = rear;
@@ -47,7 +48,11 @@ void dequeueThread() {
 			rear->next = NULL;
 		}
 
-		free(temp);
+
+		if(!temp->tid)
+			enqueue(temp);
+		else
+			free(temp);
 			
 	} else
 		fprintf(stderr, "No Active Threads!!! Unable to delete!!!\n");
