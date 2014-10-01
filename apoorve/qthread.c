@@ -103,6 +103,32 @@ struct qthread os_thread = {};
 qthread_t current = &os_thread;
 
 
+void findNextRunnableThread(qthread_t nextRunnable) {
+
+        if(activeThreadList != NULL) {
+
+                qthread_t iterator = activeThreadList;
+
+                nextRunnable = NULL;
+
+                while(iterator != NULL) {
+
+                        if(((iterator->status == 1) || (iterator->status == 3))) {
+                                if(nextRunnable != NULL) {
+
+                                        if(nextRunnable->lastPickupTime > iterator->lastPickupTime)
+
+                                                nextRunnable = iterator;
+
+                                } else
+                                        nextRunnable = iterator;
+                        }
+                }
+        }
+}
+
+
+
 /* Beware - you cannot use do_switch to switch from a thread to
  * itself. If there are no other active threads (or after a timeout
  * the first scheduled thread is the current one) you should return
@@ -114,7 +140,13 @@ qthread_t current = &os_thread;
  */
 int qthread_yield(void)
 {
-    /* your code here */
+    
+    qthread_t nextRunnableThread = NULL, prev = NULL;
+    findNextRunnableThread(nextRunnableThread);
+    prev = current;
+    current = nextRunnableThread;
+    do_switch(prev->basePtr, nextRunnableThread->basePtr);
+
     return 0;
 }
 
@@ -146,6 +178,8 @@ void insertTCB(qthread_t newThread){
 
 
         } else {
+
+		qthread_t front = activeThreadList;
 
                 newThread->next = front;
                 front->prev = newThread;
@@ -209,7 +243,7 @@ void printActiveThreadList() {
         }
 }
 
-
+/*
 void findNextRunnableThread(qthread_t nextRunnable) {
 
 	if(activeThreadList != NULL) {
@@ -218,12 +252,12 @@ void findNextRunnableThread(qthread_t nextRunnable) {
 
         	nextRunnable = NULL;
 
-		while(iterator !- NULL) {
+		while(iterator != NULL) {
 
 			if(((iterator->status == 1) || (iterator->status == 3))) {
 				if(nextRunnable != NULL) {
 
-					if(nextRunnable->lastpickuptime > iterator->lastPickupTime)
+					if(nextRunnable->lastPickupTime > iterator->lastPickupTime)
 
 						nextRunnable = iterator;
 
@@ -234,7 +268,7 @@ void findNextRunnableThread(qthread_t nextRunnable) {
 	}
 }
 
-
+*/
 void allocateThreadStack(void* basePtr, void* offsetPtr) {
 
         basePtr = malloc(THREADSTACKSIZE);
@@ -246,10 +280,10 @@ void createAndSetupTCB(qthread_t currentTCB) {
 	currentTCB = (qthread_t)malloc(sizeof(struct qthread)); 
 	insertTCB(currentTCB);
 	allocateThreadStack(currentTCB->basePtr, currentTCB->offsetPtr);	
-        currentTCB.detached = 0;
-        currentTCB.status = 1;
-        currentTCB.prev = NULL;
-        currentTCB.next = NULL;
+        currentTCB->detached = 0;
+        currentTCB->status = 1;
+        currentTCB->prev = NULL;
+        currentTCB->next = NULL;
 }
 
 void initThreadLib() {
@@ -259,9 +293,9 @@ void initThreadLib() {
 	os_thread.status = 1;
 	os_thread.prev = NULL;
 	os_thread.next = NULL;
-	allocateThreadStack(os_thread->basePtr, os_thread->offsetPtr);
+	allocateThreadStack(os_thread.basePtr, os_thread.offsetPtr);
 
-	setup_stack(os_thread->basePtr, NULL, NULL, NULL);
+	setup_stack(os_thread.basePtr, NULL, NULL, NULL);
 }
 
 
@@ -279,10 +313,12 @@ int qthread_create(qthread_t *thread, qthread_attr_t *attr,
     if(isActiveThreadListEmpty())
 	initThreadLib();
 
-    qthread_t newTCB;
+    qthread_t newTCB = *thread;
 
     createAndSetupTCB(newTCB);
-    setup_stack(currentThreadControlBlock->basePtr, NULL, start, arg[0], arg[1]);
+    setup_stack(newTCB->basePtr, start, NULL, NULL);
+
+    qthread_yield();
 
     return 0;
 }
@@ -431,7 +467,8 @@ printf("exiting thread");
 int main()
 {
 
-	
+qthread_t t1;
+qthread_create(&t1, NULL, &test_func, NULL);
 
 }
 
