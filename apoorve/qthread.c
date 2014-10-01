@@ -74,16 +74,19 @@ static double gettime(void)
 struct qthread {
     /*
      * note - you can't use 'qthread_t*' in this definition, due to C
-     * limitations. 
+     * limitations.
      * use 'struct qthread *' instead, which means the same thing:
      *    struct qthread *next;
      */
-	int thread_state;
-	void *stack_pointer;
-	void *previous_frame_pointer;
-    
-};
 
+        long tid;
+        struct qthread *prev;
+        struct qthread *next;
+        void* basePtr;
+        void* offsetPtr;
+        qthread_attr_t detached;
+        short status;
+}*activeThreadList = NULL,  *tail = NULL;
 
 /* A good organization is to keep a pointer to the 'current'
  * (i.e. running) thread, and a list of 'active' threads (not
@@ -96,7 +99,7 @@ struct qthread {
  * that to another thread and then switch back. 
  */
 struct qthread os_thread = {};
-struct qthread *current = &os_thread;
+qthread_t current = &os_thread;
 
 
 /* Beware - you cannot use do_switch to switch from a thread to
@@ -133,6 +136,88 @@ int qthread_attr_setdetachstate(qthread_attr_t *attr, int detachstate)
     return 0;
 }
 
+void insertTCB(qthread_t newThread){
+
+        if(activeThreadList == NULL) {
+
+                activeThreadList = tail = newThread;
+                newThread->tid = os_thread.tid + 1;
+
+
+        } else {
+
+                newThread->next = front;
+                front->prev = newThread;
+                front = front->prev;
+                activeThreadList = front;
+                newThread->tid  = newThread->next->tid + 1;
+        }
+}
+
+void freeTCB(long toBeDeleted) {
+
+        qthread_t iterator = activeThreadList;
+
+        if(activeThreadList != NULL) {
+
+                while(iterator != NULL) {
+                        if(iterator->tid == toBeDeleted) {
+
+                                free(iterator->basePtr);
+
+                                if(iterator->detached) {
+
+                                        iterator->prev->next = iterator->next;
+                                        iterator->next->prev = iterator->prev;
+                                        free(iterator);
+
+                                } else {
+
+                                        iterator->offsetPtr = NULL;
+                                        iterator->status = 4;
+                                        iterator->detached = -1;
+                                }
+
+                                break;
+
+                        } else
+                                iterator = iterator->next;
+                }
+
+        } else
+                fprintf(stderr, "List Empty!!! Cannot Free the given thread!!!");
+
+}
+
+int isActiveThreadListEmpty() {
+
+        return (activeThreadList == NULL)?1:0;
+
+}
+
+void printActiveThreadList() {
+
+        if(activeThreadList){
+
+                qthread_t temp = activeThreadList;
+
+                while(temp != NULL) {
+                        printf("%ld\n", temp->tid);
+                        temp = temp->next;
+                }
+        }
+}
+
+
+/*qthread_t findNextRunnableThread() {
+
+        qthread_t itr = activeThreadList;
+
+        qthread_t nextRunnable = 
+
+
+}
+*/
 
 void allocateThreadStack(void* basePtr, void* offsetPtr) {
 
@@ -140,20 +225,27 @@ void allocateThreadStack(void* basePtr, void* offsetPtr) {
         offsetPtr = basePtr + THREADSTACKSIZE;
 }
 
-void setupThreadControlBlock(struct qthread* currentThreadControlBlock) {
+void createAndSetupTCB(qthread_t currentTCB) {
 
-	currentThreadControlBlock = (struct qthread*)malloc(sizeof(struct qthread)); 
-	enqueue(currentThreadControlBlock);
-	allocateThreadStack(currentThreadControlBlock->basePtr, currentThreadControlBlock->offsetPtr);	
-	currentThreadControlBlock->detached = 0;
+	currentTCB = (qthread_t)malloc(sizeof(struct qthread)); 
+	insertTCB(currentTCB);
+	allocateThreadStack(currentTCB->basePtr, currentTCB->offsetPtr);	
+        os_thread.detached = 0;
+        os_thread.status = 1;
+        os_thread.prev = NULL;
+        os_thread.next = NULL;
 }
 
 void initThreadLib() {
 
-	struct qthread* baseThreadControlBlock;
+	os_thread.tid = 0;
+	os_thread.detached = 0;
+	os_thread.status = 1;
+	os_thread.prev = NULL;
+	os_thread.next = NULL;
+	allocateThreadStack(os_thread->basePtr, os_thread->offsetPtr);
 
-	setupThreadControlBlock(baseThreadControlBlock);
-	setup_stack(baseThreadControlBlock->basePtr, NULL, NULL, NULL);
+	setup_stack(os_thread->basePtr, NULL, NULL, NULL);
 
 }
 
@@ -169,13 +261,12 @@ void initThreadLib() {
 int qthread_create(qthread_t *thread, qthread_attr_t *attr,
                    qthread_func_ptr_t start, void *arg)
 {
-    if(isQueueEmpty)
+    if(isActiveThreadListEmpty())
 	initThreadLib();
 
-    struct qthread* currentThreadControlBlock;
+    qthread_t newTCB;
 
-    setupThreadControlBlock(currentThreadControlBlock);
-    enqueue(currentThreadControlBlock);
+    createAndSetupTCB(newTCB);
     setup_stack(currentThreadControlBlock->basePtr, NULL, start, arg[0], arg[1]);
 
     return 0;
