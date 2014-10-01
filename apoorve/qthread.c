@@ -86,6 +86,7 @@ struct qthread {
         void* offsetPtr;
         qthread_attr_t detached;
         short status;
+	time_t lastPickupTime;
 }*activeThreadList = NULL,  *tail = NULL;
 
 /* A good organization is to keep a pointer to the 'current'
@@ -209,15 +210,30 @@ void printActiveThreadList() {
 }
 
 
-/*qthread_t findNextRunnableThread() {
+void findNextRunnableThread(qthread_t nextRunnable) {
 
-        qthread_t itr = activeThreadList;
+	if(activeThreadList != NULL) {
 
-        qthread_t nextRunnable = 
+	        qthread_t iterator = activeThreadList;
 
+        	nextRunnable = NULL;
 
+		while(iterator !- NULL) {
+
+			if(((iterator->status == 1) || (iterator->status == 3))) {
+				if(nextRunnable != NULL) {
+
+					if(nextRunnable->lastpickuptime > iterator->lastPickupTime)
+
+						nextRunnable = iterator;
+
+				} else
+					nextRunnable = iterator;
+			}	
+		}
+	}
 }
-*/
+
 
 void allocateThreadStack(void* basePtr, void* offsetPtr) {
 
@@ -230,10 +246,10 @@ void createAndSetupTCB(qthread_t currentTCB) {
 	currentTCB = (qthread_t)malloc(sizeof(struct qthread)); 
 	insertTCB(currentTCB);
 	allocateThreadStack(currentTCB->basePtr, currentTCB->offsetPtr);	
-        os_thread.detached = 0;
-        os_thread.status = 1;
-        os_thread.prev = NULL;
-        os_thread.next = NULL;
+        currentTCB.detached = 0;
+        currentTCB.status = 1;
+        currentTCB.prev = NULL;
+        currentTCB.next = NULL;
 }
 
 void initThreadLib() {
@@ -246,7 +262,6 @@ void initThreadLib() {
 	allocateThreadStack(os_thread->basePtr, os_thread->offsetPtr);
 
 	setup_stack(os_thread->basePtr, NULL, NULL, NULL);
-
 }
 
 
