@@ -32,11 +32,16 @@ extern void do_switch(void **location_for_old_sp, void *new_value);
  */
 void *setup_stack(int *stack, void *func, void *arg1, void *arg2)
 {
+  
+    printf("Boom!!!\n");
+
     int old_bp = (int)stack;	/* top frame - SP = BP */
 
     *(--stack) = 0x3A3A3A3A;    /* guard zone */
     *(--stack) = 0x3A3A3A3A;
     *(--stack) = 0x3A3A3A3A;
+
+    printf("Bang!!!\n");
 
     /* this is the stack frame "calling" 'func'
      */
@@ -243,36 +248,23 @@ void printActiveThreadList() {
         }
 }
 
-/*
-void findNextRunnableThread(qthread_t nextRunnable) {
-
-	if(activeThreadList != NULL) {
-
-	        qthread_t iterator = activeThreadList;
-
-        	nextRunnable = NULL;
-
-		while(iterator != NULL) {
-
-			if(((iterator->status == 1) || (iterator->status == 3))) {
-				if(nextRunnable != NULL) {
-
-					if(nextRunnable->lastPickupTime > iterator->lastPickupTime)
-
-						nextRunnable = iterator;
-
-				} else
-					nextRunnable = iterator;
-			}	
-		}
-	}
-}
-
-*/
 void allocateThreadStack(void* basePtr, void* offsetPtr) {
 
         basePtr = malloc(THREADSTACKSIZE);
         offsetPtr = basePtr + THREADSTACKSIZE;
+
+	int* t1, *t2;
+
+	t1 = basePtr;
+	t2 = offsetPtr;
+
+	*t1 = 10;
+
+	*(--t2) = 0x3A3A3A3A;
+	
+
+	printf("%d\n", *t1);
+	printf("%d\n", *t2);
 }
 
 void createAndSetupTCB(qthread_t currentTCB) {
@@ -295,7 +287,9 @@ void initThreadLib() {
 	os_thread.next = NULL;
 	allocateThreadStack(os_thread.basePtr, os_thread.offsetPtr);
 
-	setup_stack(os_thread.basePtr, NULL, NULL, NULL);
+	setup_stack(os_thread.offsetPtr, NULL, NULL, NULL);
+
+
 }
 
 
@@ -310,16 +304,19 @@ void initThreadLib() {
 int qthread_create(qthread_t *thread, qthread_attr_t *attr,
                    qthread_func_ptr_t start, void *arg)
 {
+
+    printf("test123\n");
+
     if(isActiveThreadListEmpty())
 	initThreadLib();
-
+/*
     qthread_t newTCB = *thread;
 
     createAndSetupTCB(newTCB);
-    setup_stack(newTCB->basePtr, start, NULL, NULL);
+    setup_stack(newTCB->offsetPtr, start, NULL, NULL);
 
     qthread_yield();
-
+*/
     return 0;
 }
 
@@ -463,11 +460,10 @@ void *test_func(void *arg) {
     return arg;
 }
 
-int main()
-{
+int main() {
 
-qthread_t t1;
-qthread_create(&t1, NULL, test_func, NULL);
+	qthread_t t1;
+	qthread_create(&t1, NULL, test_func, NULL);
 
 }
 
