@@ -455,20 +455,19 @@ ssize_t qthread_write(int sockfd, const void *buf, size_t len)
 }
 
 
+void *test_func(void *arg) { 
 
-void test_func(){
-
-printf("in thread");
-sleep(60);
-printf("exiting thread");
+    printf("in thread");
+    sleep(60);
+    printf("exiting thread");
+    return arg;
 }
-
 
 int main()
 {
 
 qthread_t t1;
-qthread_create(&t1, NULL, &test_func, NULL);
+qthread_create(&t1, NULL, test_func, NULL);
 
 }
 
