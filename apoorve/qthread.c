@@ -466,6 +466,7 @@ void *test_func(void *arg) {
 int main()
 {
 
+print "starting"
 qthread_t t1;
 qthread_create(&t1, NULL, test_func, NULL);
 
