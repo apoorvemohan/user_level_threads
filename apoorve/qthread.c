@@ -468,7 +468,7 @@ int main()
 
 printf("starting");
 qthread_t t1;
-qthread_create(&t1, NULL, test_func, NULL);
+//qthread_create(&t1, NULL, test_func, NULL);
 
 }
 
